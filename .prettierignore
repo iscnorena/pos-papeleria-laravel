@@ -1,0 +1,9 @@
+vendor
+node_modules
+public/build
+bootstrap/cache
+storage
+database/database.sqlite
+
+# Referencia histórica intacta — no se reformatea.
+docs/prompt-nextjs-original.md

@@ -24,25 +24,32 @@
 > **Todo el texto de la interfaz va en español**, en tono llano de mostrador («Cobrar», no
 > «Procesar transacción»). Los identificadores de código van en inglés; los de base de datos,
 > en inglés también, para no mezclar idiomas dentro de una misma capa.
+>
+> **Flujo de diseño: usa siempre el skill `/design`.** Cualquier trabajo que implique diseño —
+> una pantalla nueva, un componente base de §4, un flujo con varias vistas, o un ajuste visual
+> no trivial — se maqueta primero con el skill `/design` (el canvas de Claude Design), siguiendo
+> el sistema de diseño de §4 al pie de la letra, **antes** de escribir el componente React/
+> Inertia definitivo. No lo saltes por parecer una pantalla simple: es la forma estándar de
+> trabajar el diseño en este proyecto, en todas las fases.
 
 ---
 
 ## 1. Stack
 
-| Pieza | Elección | Por qué |
-|---|---|---|
-| Framework | **Laravel 11, PHP 8.2+** | El stack que su mantenedor domina y puede soportar sin depender de nadie más. |
-| Vista | **Inertia.js + React 18 + TypeScript** | Un solo proyecto: los controllers de Laravel devuelven páginas React vía `Inertia::render(...)`, con sesión nativa de Laravel para auth. Sin API REST separada que mantener, sin CORS, sin tokens. Es lo más parecido a los Server Components/Server Actions de la versión Next.js, pero corriendo dentro de Laravel. |
-| Base de datos | **MySQL 8 / MariaDB** | Estándar en hosting Laravel, corre igual de bien en local. |
-| ORM / migraciones | **Eloquent + migraciones de Laravel** | Nativo del framework; migraciones en PHP revisables antes de correr. |
-| Sesión / login | **Sesión nativa de Laravel** (cookie cifrada, `httpOnly`) | Login por **usuario y contraseña** y por **PIN** (§5), ambos contra la tabla `users` del propio proyecto — no hace falta Auth.js ni JWT, Laravel ya resuelve sesión, CSRF y cookies de forma segura por defecto. |
-| Autorización | **Policies + Gates nativos de Laravel**, sin `spatie/laravel-permission` | Dos roles fijos (`admin`, `cajera`) no justifican un paquete pensado para permisos dinámicos. |
-| Estilos | **Tailwind CSS v3** con la configuración de §4 | La configuración ya existe y está afinada; se copia tal cual — es diseño, no depende del framework. |
-| Estado del punto de venta | **React state local (`useReducer` o Context)** en el componente del carrito | El carrito es la única pantalla con estado de cliente de verdad; no hace falta Zustand ni Redux para una sola pantalla. |
-| Validación | **Form Requests de Laravel** en el borde de cada acción del servidor | Nunca confíes en lo que llega del cliente. Los errores de validación llegan a React automáticamente como props de Inertia. |
-| PDF del ticket | **`barryvdh/laravel-dompdf`, en el servidor** | Sin restricción de Vercel que evitar: una vista Blade se convierte a PDF directamente. Es la única vista Blade real de todo el proyecto. |
-| PDF de AcomodaImpresion | **pdf-lib, en el navegador** | No es una limitación de hosting: es una decisión de privacidad y rendimiento (§6) que se mantiene sin cambio. |
-| Pruebas | **Pest** (lógica PHP pura: dinero, folios, cálculo de venta), **Vitest** (el motor de retícula en TypeScript), **Playwright** (dos o tres flujos críticos) | La lógica de dinero, folios y retícula de impresión sí se prueba; los formularios CRUD no lo necesitan. |
+| Pieza                     | Elección                                                                                                                                                   | Por qué                                                                                                                                                                                                                                                                                                               |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Framework                 | **Laravel 11, PHP 8.2+**                                                                                                                                   | El stack que su mantenedor domina y puede soportar sin depender de nadie más.                                                                                                                                                                                                                                         |
+| Vista                     | **Inertia.js + React 18 + TypeScript**                                                                                                                     | Un solo proyecto: los controllers de Laravel devuelven páginas React vía `Inertia::render(...)`, con sesión nativa de Laravel para auth. Sin API REST separada que mantener, sin CORS, sin tokens. Es lo más parecido a los Server Components/Server Actions de la versión Next.js, pero corriendo dentro de Laravel. |
+| Base de datos             | **MySQL 8 / MariaDB**                                                                                                                                      | Estándar en hosting Laravel, corre igual de bien en local.                                                                                                                                                                                                                                                            |
+| ORM / migraciones         | **Eloquent + migraciones de Laravel**                                                                                                                      | Nativo del framework; migraciones en PHP revisables antes de correr.                                                                                                                                                                                                                                                  |
+| Sesión / login            | **Sesión nativa de Laravel** (cookie cifrada, `httpOnly`)                                                                                                  | Login por **usuario y contraseña** y por **PIN** (§5), ambos contra la tabla `users` del propio proyecto — no hace falta Auth.js ni JWT, Laravel ya resuelve sesión, CSRF y cookies de forma segura por defecto.                                                                                                      |
+| Autorización              | **Policies + Gates nativos de Laravel**, sin `spatie/laravel-permission`                                                                                   | Dos roles fijos (`admin`, `cajera`) no justifican un paquete pensado para permisos dinámicos.                                                                                                                                                                                                                         |
+| Estilos                   | **Tailwind CSS v3** con la configuración de §4                                                                                                             | La configuración ya existe y está afinada; se copia tal cual — es diseño, no depende del framework.                                                                                                                                                                                                                   |
+| Estado del punto de venta | **React state local (`useReducer` o Context)** en el componente del carrito                                                                                | El carrito es la única pantalla con estado de cliente de verdad; no hace falta Zustand ni Redux para una sola pantalla.                                                                                                                                                                                               |
+| Validación                | **Form Requests de Laravel** en el borde de cada acción del servidor                                                                                       | Nunca confíes en lo que llega del cliente. Los errores de validación llegan a React automáticamente como props de Inertia.                                                                                                                                                                                            |
+| PDF del ticket            | **`barryvdh/laravel-dompdf`, en el servidor**                                                                                                              | Sin restricción de Vercel que evitar: una vista Blade se convierte a PDF directamente. Es la única vista Blade real de todo el proyecto.                                                                                                                                                                              |
+| PDF de AcomodaImpresion   | **pdf-lib, en el navegador**                                                                                                                               | No es una limitación de hosting: es una decisión de privacidad y rendimiento (§6) que se mantiene sin cambio.                                                                                                                                                                                                         |
+| Pruebas                   | **Pest** (lógica PHP pura: dinero, folios, cálculo de venta), **Vitest** (el motor de retícula en TypeScript), **Playwright** (dos o tres flujos críticos) | La lógica de dinero, folios y retícula de impresión sí se prueba; los formularios CRUD no lo necesitan.                                                                                                                                                                                                               |
 
 **Dependencias que NO debes agregar:** librerías de componentes (shadcn, MUI, Chakra),
 librerías de tablas, `spatie/laravel-permission`, Zustand/Redux, `moment` (usa Carbon, ya viene
@@ -122,14 +129,14 @@ teclado, no con mouse), foco visible siempre, contraste AA, y los campos numéri
 
 Dos roles. No inventes más.
 
-| | `admin` | `cajera` |
-|---|---|---|
-| Punto de venta, turnos propios, historial propio | ✅ | ✅ |
-| Herramientas (§9 de fases, Fase 6) | ✅ | ✅ |
-| Sucursales, usuarios, categorías, productos, inventario | ✅ | ❌ |
-| Reportes | ✅ | ❌ |
-| Cancelar una venta | ✅ | ❌ |
-| Ver turnos y ventas de todos | ✅ | ❌ (solo los suyos) |
+|                                                         | `admin` | `cajera`            |
+| ------------------------------------------------------- | ------- | ------------------- |
+| Punto de venta, turnos propios, historial propio        | ✅      | ✅                  |
+| Herramientas (§9 de fases, Fase 6)                      | ✅      | ✅                  |
+| Sucursales, usuarios, categorías, productos, inventario | ✅      | ❌                  |
+| Reportes                                                | ✅      | ❌                  |
+| Cancelar una venta                                      | ✅      | ❌                  |
+| Ver turnos y ventas de todos                            | ✅      | ❌ (solo los suyos) |
 
 Cada usuario pertenece a **una sucursal** (`branch_id`). Un cajero solo ve el inventario y
 vende contra el inventario de su sucursal. `role` es un `enum('admin','cajera')` directo en
@@ -157,14 +164,14 @@ export default {
             transparent: 'transparent',
             current: 'currentColor',
             white: '#FFFFFF',
-            papel:     { DEFAULT: '#FAF9F4', hondo: '#F1EFE7' },   // fondo de página; zonas rehundidas
-            tinta:     { DEFAULT: '#17212F', claro: '#243347', tenue: '#3A4A61' }, // texto principal, cromo oscuro
-            grafito:   { DEFAULT: '#5A6472', claro: '#8A93A1' },    // texto secundario y terciario
-            linea:     { DEFAULT: '#E2DFD5', fuerte: '#CFCAB9' },   // filetes; bordes de campo
+            papel: { DEFAULT: '#FAF9F4', hondo: '#F1EFE7' }, // fondo de página; zonas rehundidas
+            tinta: { DEFAULT: '#17212F', claro: '#243347', tenue: '#3A4A61' }, // texto principal, cromo oscuro
+            grafito: { DEFAULT: '#5A6472', claro: '#8A93A1' }, // texto secundario y terciario
+            linea: { DEFAULT: '#E2DFD5', fuerte: '#CFCAB9' }, // filetes; bordes de campo
             boligrafo: { DEFAULT: '#2647D6', hondo: '#1A34A8', tenue: '#EAEDFB' }, // acción primaria, enlaces, foco
-            marcador:  { DEFAULT: '#FFE24D', hondo: '#F0CB16', tenue: '#FFF6D1' }, // resaltador: SOLO el total y el ítem activo
-            sello:     { DEFAULT: '#BE3A2E', hondo: '#9A2C22', tenue: '#FBEDEB' }, // destructivo, cancelada, sin stock
-            visto:     { DEFAULT: '#1C7A52', hondo: '#13583A', tenue: '#E8F4EE' }, // completada, pagado, en stock
+            marcador: { DEFAULT: '#FFE24D', hondo: '#F0CB16', tenue: '#FFF6D1' }, // resaltador: SOLO el total y el ítem activo
+            sello: { DEFAULT: '#BE3A2E', hondo: '#9A2C22', tenue: '#FBEDEB' }, // destructivo, cancelada, sin stock
+            visto: { DEFAULT: '#1C7A52', hondo: '#13583A', tenue: '#E8F4EE' }, // completada, pagado, en stock
         },
         fontFamily: {
             display: ['Archivo', 'ui-sans-serif', 'system-ui', 'sans-serif'],
@@ -173,25 +180,25 @@ export default {
         },
         extend: {
             fontSize: {
-                micro:  ['0.6875rem', { lineHeight: '1rem', letterSpacing: '0.08em' }],
-                fino:   ['0.75rem',   { lineHeight: '1.125rem' }],
-                base:   ['0.875rem',  { lineHeight: '1.375rem' }],
-                cuerpo: ['1rem',      { lineHeight: '1.5rem' }],
-                titulo: ['1.375rem',  { lineHeight: '1.75rem', letterSpacing: '-0.01em' }],
-                cifra:  ['2rem',      { lineHeight: '2.25rem', letterSpacing: '-0.02em' }],
-                total:  ['2.75rem',   { lineHeight: '3rem', letterSpacing: '-0.02em' }],
+                micro: ['0.6875rem', { lineHeight: '1rem', letterSpacing: '0.08em' }],
+                fino: ['0.75rem', { lineHeight: '1.125rem' }],
+                base: ['0.875rem', { lineHeight: '1.375rem' }],
+                cuerpo: ['1rem', { lineHeight: '1.5rem' }],
+                titulo: ['1.375rem', { lineHeight: '1.75rem', letterSpacing: '-0.01em' }],
+                cifra: ['2rem', { lineHeight: '2.25rem', letterSpacing: '-0.02em' }],
+                total: ['2.75rem', { lineHeight: '3rem', letterSpacing: '-0.02em' }],
             },
             borderRadius: { DEFAULT: '2px', sm: '1px', md: '3px', lg: '4px' },
             boxShadow: {
                 impresa: '0 1px 0 0 #E2DFD5, 0 2px 0 0 rgba(23, 33, 47, 0.04)',
-                alzada:  '2px 3px 0 0 rgba(23, 33, 47, 0.10)',
-                cinta:   '3px 4px 0 0 rgba(23, 33, 47, 0.07)',
+                alzada: '2px 3px 0 0 rgba(23, 33, 47, 0.10)',
+                cinta: '3px 4px 0 0 rgba(23, 33, 47, 0.07)',
                 none: 'none',
             },
             spacing: {
                 renglon: '2.75rem', // 44px: altura de fila del libro rayado
-                tecla:   '3.5rem',  // 56px: alto mínimo de tecla del teclado numérico
-                cinta:   '25rem',   // 400px: ancho de la cinta del ticket
+                tecla: '3.5rem', // 56px: alto mínimo de tecla del teclado numérico
+                cinta: '25rem', // 400px: ancho de la cinta del ticket
             },
             zIndex: { cajon: '40', capa: '50', aviso: '60' },
             transitionDuration: { avance: '120ms' },
@@ -440,13 +447,13 @@ o queda todo, o no queda nada.
   turno (middleware `EnsureShiftIsOpen`).
 - Al abrir se captura el fondo de caja (`opening_amount_cents`).
 - Al cerrar se captura el efectivo contado (`actual_cash_cents`) y el sistema calcula:
-  ```
-  efectivoEsperado = fondoDeCaja + Σ pagos en efectivo de las ventas completadas del turno
-  diferencia       = efectivoContado − efectivoEsperado
-  ```
-  La diferencia se muestra en `visto` si es cero, en `sello` si falta dinero, en `grafito` si
-  sobra. Además se congela un resumen por método de pago en `shift_payments` (total y número de
-  transacciones), para que el corte no dependa de recalcular ventas históricas.
+    ```
+    efectivoEsperado = fondoDeCaja + Σ pagos en efectivo de las ventas completadas del turno
+    diferencia       = efectivoContado − efectivoEsperado
+    ```
+    La diferencia se muestra en `visto` si es cero, en `sello` si falta dinero, en `grafito` si
+    sobra. Además se congela un resumen por método de pago en `shift_payments` (total y número de
+    transacciones), para que el corte no dependa de recalcular ventas históricas.
 - Las ventas canceladas **no cuentan** para el efectivo esperado.
 
 ### 7.6 Cancelación de venta
@@ -472,6 +479,7 @@ configurado, migraciones corriendo, ESLint + Prettier + Pint. Una página en bla
 `PEXELS_API_KEY`, `PIXABAY_API_KEY`).
 
 **Aceptación:**
+
 1. `php artisan migrate` corre limpio contra MySQL local.
 2. `php artisan serve` + `npm run dev` levantan la app; la página raíz carga con la tipografía
    correcta (no la sustituta del sistema — verifícalo en DevTools).
@@ -487,6 +495,7 @@ middleware `auth` + `EnsureRole`; cierre de sesión. Semilla mínima: sucursal �
 usuario `admin` / `password` / PIN `1234`.
 
 **Aceptación:**
+
 1. `admin` / `password` entra; contraseña incorrecta muestra error en español y no revela si el
    usuario existe.
 2. PIN `1234` entra al mismo usuario, tecleando en el teclado físico y con clic.
@@ -512,6 +521,7 @@ La pantalla de inventario resalta en `sello-tenue` los renglones con stock ≤ 0
 por sucursal y por categoría, y buscar por nombre o código.
 
 **Aceptación:**
+
 1. Crear producto, categoría, usuario y sucursal, y editarlos, funciona con validación visible
    en el campo que falla (Form Requests → errores de Inertia).
 2. Un usuario `cajera` que visite `/productos` recibe 403, aunque escriba la URL a mano.
@@ -531,10 +541,11 @@ La pantalla de cierre es la que más cuidado necesita: la cajera captura el efec
 Confirmar es irreversible, así que va con modal de confirmación.
 
 **Aceptación:**
+
 1. Abrir turno con fondo $500, no poder abrir un segundo turno.
 2. Sin turno abierto, `/caja` redirige a la pantalla de apertura.
 3. Cerrar con efectivo contado igual al esperado muestra diferencia `$0.00` en `visto`; con $50
-   menos, muestra `−$50.00` en `sello`.
+   menos, muestra `−$50.00`en`sello`.
 4. Una cajera no ve los turnos de otra cajera; el admin ve todos.
 
 ---
@@ -572,6 +583,7 @@ fecha, cajera, renglones en `mono`, totales, desglose de pagos, cambio, y el pie
 `config('pos.pie_ticket')`.
 
 **Aceptación:**
+
 1. Vender 3 productos distintos con cantidades distintas descuenta las existencias correctas y
    solo de la sucursal del cajero.
 2. Pago mixto de $100 efectivo + $50 tarjeta para un total de $130 guarda dos pagos que suman
@@ -600,6 +612,7 @@ bien en Excel con acentos correctos.
 baja, y accesos directos a caja y herramientas. Para la cajera, solo lo suyo.
 
 **Aceptación:**
+
 1. El reporte diario de hoy cuadra con la suma de las ventas del historial del mismo día.
 2. Cancelar una venta devuelve el stock, la saca de los totales del reporte y la deja tachada en
    el historial.
@@ -621,16 +634,16 @@ vitrina:
 ```ts
 // resources/js/tools/registry.ts
 export type Herramienta = {
-  id: string;                       // 'acomoda-impresion'
-  nombre: string;                   // 'Acomodar impresión'
-  descripcion: string;              // una línea, la que se lee en la tarjeta
-  icono: ComponentType;             // SVG a trazo, no emoji
-  ruta: string;                     // '/herramientas/acomoda-impresion'
-  roles: Rol[];                     // ['admin', 'cajera']
-  estado: 'lista' | 'beta' | 'proxima';
+    id: string; // 'acomoda-impresion'
+    nombre: string; // 'Acomodar impresión'
+    descripcion: string; // una línea, la que se lee en la tarjeta
+    icono: ComponentType; // SVG a trazo, no emoji
+    ruta: string; // '/herramientas/acomoda-impresion'
+    roles: Rol[]; // ['admin', 'cajera']
+    estado: 'lista' | 'beta' | 'proxima';
 };
 
-export const HERRAMIENTAS: Herramienta[] = [ /* ... */ ];
+export const HERRAMIENTAS: Herramienta[] = [/* ... */];
 ```
 
 La vitrina lista las tarjetas filtradas por el rol de la sesión, con las de estado `proxima`
@@ -645,10 +658,10 @@ precio no cobran por su cuenta. Declaran un cargo con esta forma y ya está:
 ```ts
 // resources/js/tools/contracts.ts
 export type CargoHerramienta = {
-  concepto: string;         // 'Impresión color 4/hoja'
-  cantidad: number;         // 5
-  precioUnitario: number;   // en centavos
-  origen: { toolId: string; meta: Record<string, unknown> };
+    concepto: string; // 'Impresión color 4/hoja'
+    cantidad: number; // 5
+    precioUnitario: number; // en centavos
+    origen: { toolId: string; meta: Record<string, unknown> };
 };
 ```
 
@@ -664,6 +677,7 @@ trabajos** (copias, engargolados, enmicados) y **Herramientas de PDF** (unir, di
 lo que trae el cliente en USB).
 
 **Aceptación:**
+
 1. Agregar una herramienta de prueba al arreglo la hace aparecer en la vitrina sin tocar
    ningún otro archivo.
 2. Una herramienta con `roles: ['admin']` no se ve como cajera, y entrar por URL da 403.
@@ -734,13 +748,13 @@ celda cae cada imagen.
 2. `maximizar` → llena la celda entera, **deformada** (sin respetar proporción). **Es el
    default.**
 3. Ninguno → ajuste proporcional centrado:
-   ```
-   aspectoCelda = anchoCelda / altoCelda
-   si aspectoImagen > aspectoCelda:  ancho = anchoCelda; alto = anchoCelda / aspectoImagen
-   si no:                            alto  = altoCelda;  ancho = altoCelda × aspectoImagen
-   x = celda.x + (anchoCelda − ancho) / 2
-   y = celda.y + (altoCelda  − alto)  / 2
-   ```
+    ```
+    aspectoCelda = anchoCelda / altoCelda
+    si aspectoImagen > aspectoCelda:  ancho = anchoCelda; alto = anchoCelda / aspectoImagen
+    si no:                            alto  = altoCelda;  ancho = altoCelda × aspectoImagen
+    x = celda.x + (anchoCelda − ancho) / 2
+    y = celda.y + (altoCelda  − alto)  / 2
+    ```
 
 Que los modos 1 y 2 deformen la imagen **no es un error**: es el comportamiento del original
 (`Stretch.Fill`) y el negocio lo usa así. Consérvalo.
@@ -752,28 +766,30 @@ aspecto usado en la fórmula se **invierte** (`aspecto = 1 / aspectoImagen`).
 gris, patrón de guiones `4 2`; grosor 1px en pantalla, 0.5px en el PDF.
 
 **Paginación:**
+
 ```
 celdasPorPagina = rows × cols
 totalPaginas    = ceil(totalImagenes / celdasPorPagina)   // mínimo 1
 indiceInicial   = pagina × celdasPorPagina
 ```
+
 Las celdas sobrantes de la última hoja se dibujan **vacías con fondo `#F5F5F5` y borde
 `#E0E0E0`**. Si al cambiar de layout la página actual queda fuera de rango, se ajusta a la
 última página válida.
 
 #### 7.2 Precios
 
-**Color:** precio *por imagen*, depende de cuántas celdas tiene el layout.
+**Color:** precio _por imagen_, depende de cuántas celdas tiene el layout.
 
 | Celdas por hoja | Precio por imagen |
-|---|---|
-| 1 | 10.00 |
-| 2 | 5.00 |
-| 4 | 3.00 |
-| 6 | 2.00 |
-| 9 | 1.00 |
+| --------------- | ----------------- |
+| 1               | 10.00             |
+| 2               | 5.00              |
+| 4               | 3.00              |
+| 6               | 2.00              |
+| 9               | 1.00              |
 
-**Blanco y negro:** precio *por hoja*, default `1.00`.
+**Blanco y negro:** precio _por hoja_, default `1.00`.
 
 ```
 si totalImagenes == 0             → 0
@@ -788,19 +804,19 @@ guardan en `localStorage` (son de este equipo, no del negocio).
 
 #### 7.3 Valores por defecto y límites
 
-| Campo | Default | Límite |
-|---|---|---|
-| Layout | `1 (1×1)` | opciones: 1×1, 1×2, 2×2, 2×3, 3×3 |
-| Papel | `Carta` | |
-| Orientación | `Horizontal` | |
-| Márgenes (4) | `0.0 in` | rango 0.0–1.0, paso ±0.05 |
-| Espaciado | `0.1 in` | rango 0.0–1.0, paso ±0.05 |
-| DPI | `300` | ver nota |
-| Guías de corte | activado | |
-| Girar | desactivado | |
-| Maximizar | activado | |
-| Tamaño fijo | desactivado | default 5.0 × 5.0 cm |
-| Color | activado | |
+| Campo          | Default      | Límite                            |
+| -------------- | ------------ | --------------------------------- |
+| Layout         | `1 (1×1)`    | opciones: 1×1, 1×2, 2×2, 2×3, 3×3 |
+| Papel          | `Carta`      |                                   |
+| Orientación    | `Horizontal` |                                   |
+| Márgenes (4)   | `0.0 in`     | rango 0.0–1.0, paso ±0.05         |
+| Espaciado      | `0.1 in`     | rango 0.0–1.0, paso ±0.05         |
+| DPI            | `300`        | ver nota                          |
+| Guías de corte | activado     |                                   |
+| Girar          | desactivado  |                                   |
+| Maximizar      | activado     |                                   |
+| Tamaño fijo    | desactivado  | default 5.0 × 5.0 cm              |
+| Color          | activado     |                                   |
 
 Las etiquetas del selector de layout son literalmente: `1 (1×1)`, `2 (1×2)`, `4 (2×2)`,
 `6 (2×3)`, `9 (3×3)`.
@@ -831,14 +847,23 @@ Guardar y cargar configuraciones en `localStorage`, más **importar y exportar c
 
 ```json
 {
-  "PresetName": "Sin nombre",
-  "Rows": 1, "Columns": 1,
-  "MarginTop": 0.0, "MarginBottom": 0.0, "MarginLeft": 0.0, "MarginRight": 0.0,
-  "Spacing": 0.1,
-  "PaperSize": "Carta", "Orientation": "Horizontal",
-  "Dpi": 300,
-  "ShowCutGuides": true, "RotateImages": false, "MaximizeImages": true,
-  "UseCustomImageSize": false, "CustomImageWidthCm": 5.0, "CustomImageHeightCm": 5.0
+    "PresetName": "Sin nombre",
+    "Rows": 1,
+    "Columns": 1,
+    "MarginTop": 0.0,
+    "MarginBottom": 0.0,
+    "MarginLeft": 0.0,
+    "MarginRight": 0.0,
+    "Spacing": 0.1,
+    "PaperSize": "Carta",
+    "Orientation": "Horizontal",
+    "Dpi": 300,
+    "ShowCutGuides": true,
+    "RotateImages": false,
+    "MaximizeImages": true,
+    "UseCustomImageSize": false,
+    "CustomImageWidthCm": 5.0,
+    "CustomImageHeightCm": 5.0
 }
 ```
 
