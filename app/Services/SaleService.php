@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Exceptions\InsufficientPaymentException;
 use App\Exceptions\InsufficientStockException;
+use App\Exceptions\SaleAlreadyCancelledException;
 use App\Models\CashRegisterShift;
 use App\Models\Product;
 use App\Models\Sale;
@@ -140,6 +141,32 @@ class SaleService
         if ($affected === 0) {
             throw new InsufficientStockException($product->name);
         }
+    }
+
+    /**
+     * §7.6: solo admin (verificado en el controller). Devuelve el stock de cada renglón cuyo
+     * producto maneje inventario. No se borra nada — la venta sigue en el historial, tachada.
+     *
+     * @throws SaleAlreadyCancelledException
+     */
+    public function cancelSale(Sale $sale): void
+    {
+        if ($sale->status === 'cancelled') {
+            throw new SaleAlreadyCancelledException;
+        }
+
+        DB::transaction(function () use ($sale) {
+            foreach ($sale->items()->with('product')->get() as $item) {
+                if ($item->product?->manages_inventory) {
+                    DB::table('inventories')
+                        ->where('product_id', $item->product_id)
+                        ->where('branch_id', $sale->branch_id)
+                        ->increment('stock', (int) $item->quantity);
+                }
+            }
+
+            $sale->update(['status' => 'cancelled']);
+        });
     }
 
     /**

@@ -354,3 +354,85 @@ build` primero revienta con `ViteException: Unable to locate file in Vite manife
 ### Pendiente para cerrar del todo (no bloquea empezar la Fase 5)
 
 - Mismo pendiente de siempre: no hay CI.
+
+---
+
+## Fase 5 — detalle
+
+Commit siguiente a `1e3e351` · rama `main`.
+
+### Hecho
+
+- `App\Support\Fechas`: único punto que traduce "hoy"/rangos de fecha del negocio a límites
+  UTC. `hoy()` usa `config('pos.timezone')` (nunca `now()` a secas); `inicioDelDiaUtc()` /
+  `finDelDiaUtc()` dan los límites listos para `whereBetween('created_at', ...)`; `parse()`
+  ancla un string de un input de filtro (`"2026-08-25"`) a la zona del negocio al parsearlo
+  (ver el bug de abajo — es la razón de que este método exista).
+- `SaleService::cancelSale()` (§7.6): solo transaccional — devuelve el stock de cada renglón
+  cuyo producto maneje inventario y marca `status = 'cancelled'`. Nunca borra el registro; la
+  autorización de "solo admin" vive en el middleware de la ruta, no aquí.
+  `SaleAlreadyCancelledException` si ya estaba cancelada.
+- `App\Services\ReportService` (diario / por sucursal / por cajera): trae las ventas
+  `completed` del rango con sus relaciones y agrupa **en PHP** (`Collection::groupBy`), no con
+  `GROUP BY` + `CONVERT_TZ` en SQL — con el volumen bajo de este negocio (§0) es más simple y
+  evita depender de que MySQL tenga cargadas las tablas de zonas horarias con nombre.
+- `SaleController` (`/ventas`, `/ventas/{sale}`, `/ventas/{sale}/cancelar`),
+  `ReportController` (`/reportes/diario|sucursales|cajeras`) y `DashboardController`
+  reescrito. El historial es una sola ruta para los dos roles: la cajera queda acotada a
+  `user_id = auth()->id()` **dentro del controller**, no con un middleware de rol — porque sí
+  puede entrar, solo que ve menos.
+- Frontend: `Sales/Index.tsx` (filtros de fecha/sucursal/cajera/estado, fila cancelada
+  tachada), `Sales/Show.tsx` (detalle + botón "Cancelar venta" con modal de confirmación,
+  solo visible para admin y solo si la venta no está ya cancelada), `Reports/Index.tsx` (un
+  solo componente para las 3 vistas de reporte, discriminado por la prop `tipo` que manda el
+  controller — evita triplicar JSX casi idéntico), `Dashboard.tsx` reescrito con las 4
+  tarjetas, el banner de turno abierto y el acceso directo a caja. `resources/js/lib/csv.ts`:
+  exportación 100% cliente con BOM UTF-8 (`\xEF\xBB\xBF`), nunca se genera el archivo en el
+  servidor.
+- Maquetado primero en `/design` (Tablero, Historial, Reportes) antes de escribir el código
+  definitivo, como manda `AGENTS.md`.
+- Nav: se agregó "Ventas" a los enlaces comunes y "Reportes" a los de admin
+  (`AuthenticatedLayout.tsx`), con `activoPatron: 'reportes.*'` para que el enlace se resalte
+  en las 3 subrutas de reporte, no solo en la del día.
+- El acceso directo "Herramientas" del tablero (mockeado en `/design`) se dejó **fuera** del
+  código a propósito — esa ruta no existe hasta la Fase 6 y hubiera sido un 404.
+- Pruebas: 9 Pest (`tests/Feature/SalesAndReportsTest.php`) cubriendo los 4 criterios de
+  aceptación más autorización (cajera no cancela, no ve reportes, solo ve lo suyo) — incluida
+  una prueba dedicada al criterio de zona horaria, con `travelTo()` a las 8 PM hora del
+  negocio para forzar que la fecha UTC y la fecha local difieran. Verificación real de
+  navegador (Playwright) de los 4 criterios: venta completa por la cajera → cuadre en
+  reporte/historial del admin → exportar CSV con el reporte aún con datos → cancelar → stock
+  devuelto, fuera de los totales del reporte, tachada en el historial — más capturas de
+  pantalla del tablero de ambos roles y las 3 pestañas de reporte.
+
+### Decisiones / gotchas que no eran obvias
+
+- **Bug real de zona horaria, no solo teórico — lo encontraron las pruebas, no una revisión de
+  código.** `ReportController`/`SaleController` parseaban las fechas de filtro con
+  `Carbon::parse($request->string('desde'))` a secas. Como `config('app.timezone')` es `UTC`,
+  eso crea un instante `2026-08-25T00:00:00Z`. `Fechas::inicioDelDiaUtc()` reinterpreta ese
+  instante en la zona del negocio (`America/Mexico_City`, UTC-6): `2026-08-25T00:00Z` cae en
+  `2026-08-24T18:00` hora local, así que `startOfDay()` daba el **24**, no el 25 — el rango
+  entero quedaba corrido un día hacia atrás. Nunca se hubiera notado con datos de "hoy" sin
+  filtro explícito (`Fechas::hoy()` ya nace anclada a la zona correcta); solo lo disparó una
+  prueba que sí mandaba `desde`/`hasta` explícitos, que es exactamente como los usa el filtro
+  de fecha del historial y del reporte en la interfaz real. Arreglado con `Fechas::parse()`,
+  que ancla el string a `pos.timezone` **al parsear**, no después.
+- **Exportar CSV se probó con datos en pantalla, no después de cancelar la única venta del
+  día**: el botón "Exportar CSV" está deshabilitado cuando `filas.length === 0` (no tiene
+  sentido descargar un CSV vacío), así que la prueba de Playwright que primero cancelaba y
+  luego intentaba exportar se quedaba esperando un `download` que nunca llegaba — no un bug
+  de la app, un orden equivocado en el propio script de verificación.
+- **`ReportService` espera que quien lo llame ya haya anclado las fechas a la zona del
+  negocio** (vía `Fechas::hoy()` o `Fechas::parse()`), no cualquier `Carbon`. Documentado con
+  el propio nombre del método (`Fechas::parse`) para que sea difícil de usar mal, pero vale
+  la pena tenerlo presente si se agrega un cuarto tipo de reporte más adelante.
+- El criterio de "ganancia" en el detalle de una venta (`Sales/Show.tsx`) solo se le muestra al
+  admin — la cajera ve subtotal/impuesto/descuento/total pero no el margen, igual que en el
+  resto de la interfaz (nunca se le expone costo/ganancia a la cajera).
+
+### Pendiente para cerrar del todo (no bloquea empezar la Fase 6)
+
+- Mismo pendiente de siempre: no hay CI.
+- El acceso directo "Herramientas" del tablero, ya maquetado en `/design`, queda para cuando
+  exista la ruta `/herramientas` en la Fase 6.

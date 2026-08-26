@@ -4,12 +4,20 @@ import { PageProps } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode } from 'react';
 
-const ENLACES_COMUNES = [
+interface EnlaceDef {
+    ruta: string;
+    etiqueta: string;
+    activoPatron?: string;
+}
+
+const ENLACES_COMUNES: EnlaceDef[] = [
     { ruta: 'dashboard', etiqueta: 'Tablero' },
     { ruta: 'turnos.index', etiqueta: 'Turnos' },
+    { ruta: 'ventas.index', etiqueta: 'Ventas' },
 ];
 
-const ENLACES_ADMIN = [
+const ENLACES_ADMIN: EnlaceDef[] = [
+    { ruta: 'reportes.diario', etiqueta: 'Reportes', activoPatron: 'reportes.*' },
     { ruta: 'sucursales.index', etiqueta: 'Sucursales' },
     { ruta: 'usuarios.index', etiqueta: 'Usuarios' },
     { ruta: 'categorias.index', etiqueta: 'Categorías' },
@@ -36,7 +44,7 @@ export default function AuthenticatedLayout({
                             <EnlaceNav
                                 key={enlace.ruta}
                                 href={route(enlace.ruta)}
-                                activo={route().current(enlace.ruta)}
+                                activo={route().current(enlace.activoPatron ?? enlace.ruta)}
                             >
                                 {enlace.etiqueta}
                             </EnlaceNav>

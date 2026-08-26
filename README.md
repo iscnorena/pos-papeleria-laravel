@@ -8,7 +8,8 @@ contradice, gana el documento. La versión anterior del prompt (pensada para un 
 Next.js/Vercel, descartado) se conserva como referencia histórica en
 [`docs/prompt-nextjs-original.md`](docs/prompt-nextjs-original.md).
 
-**Estado: Fase 4 (punto de venta) terminada.** Siguiente: Fase 5, historial y reportes.
+**Estado: Fase 5 (historial, reportes y tablero) terminada.** Siguiente: Fase 6, sección
+Herramientas.
 
 ## Arranque
 

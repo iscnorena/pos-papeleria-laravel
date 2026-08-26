@@ -5,19 +5,21 @@ use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\ProductCategoryController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PosController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SaleController;
 use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\TicketController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 Route::get('/', function () {
     return redirect()->route('dashboard');
 });
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware('auth')->name('dashboard');
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->middleware('auth')
+    ->name('dashboard');
 
 // §6: el ticket es público (sin sesión) para poder compartirse por WhatsApp — resuelto por
 // el token opaco, nunca por el id incremental.
@@ -37,6 +39,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/turnos/{shift}', [ShiftController::class, 'show'])->name('turnos.show');
     Route::get('/turnos/{shift}/cerrar', [ShiftController::class, 'edit'])->name('turnos.cerrar');
     Route::put('/turnos/{shift}/cerrar', [ShiftController::class, 'update'])->name('turnos.cerrar.store');
+
+    // §8 Fase 5: historial visible para los dos roles, escondido a lo propio para cajera
+    // (verificado dentro del controller, no con un middleware de rol).
+    Route::get('/ventas', [SaleController::class, 'index'])->name('ventas.index');
+    Route::get('/ventas/{sale}', [SaleController::class, 'show'])->name('ventas.show');
 });
 
 Route::middleware(['auth', 'role:admin'])->group(function () {
@@ -60,6 +67,12 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     Route::get('/inventario', [InventoryController::class, 'index'])->name('inventario.index');
     Route::put('/inventario/{inventory}', [InventoryController::class, 'update'])->name('inventario.update');
+
+    Route::put('/ventas/{sale}/cancelar', [SaleController::class, 'cancel'])->name('ventas.cancelar');
+
+    Route::get('/reportes/diario', [ReportController::class, 'daily'])->name('reportes.diario');
+    Route::get('/reportes/sucursales', [ReportController::class, 'byBranch'])->name('reportes.sucursales');
+    Route::get('/reportes/cajeras', [ReportController::class, 'byCashier'])->name('reportes.cajeras');
 });
 
 require __DIR__.'/auth.php';
