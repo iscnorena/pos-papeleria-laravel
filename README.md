@@ -8,7 +8,7 @@ contradice, gana el documento. La versión anterior del prompt (pensada para un 
 Next.js/Vercel, descartado) se conserva como referencia histórica en
 [`docs/prompt-nextjs-original.md`](docs/prompt-nextjs-original.md).
 
-**Estado: Fase 1 (autenticación) terminada.** Siguiente: Fase 2, catálogo y administración.
+**Estado: Fase 2 (catálogo y administración) terminada.** Siguiente: Fase 3, turnos de caja.
 
 ## Arranque
 
@@ -44,9 +44,12 @@ npm run build   # o: npm run dev, en dos terminales junto con `php artisan serve
 docs/prompt.md              la especificación — léela antes de tocar nada
 app/Models/                  modelos Eloquent
 app/Services/                lógica de negocio (ventas, turnos, inventario, folios)
+app/Support/Money.php        dinero en centavos enteros (§2) — toCents/toPesos/format
 config/pos.php               configuración del negocio (§7.1) — nombre, ticket, impuesto, zona horaria
 database/migrations/         esquema (§7)
-resources/js/Pages/          páginas Inertia/React
+resources/js/Pages/          páginas Inertia/React (Admin/* son las pantallas de la Fase 2)
+resources/js/Components/ui/  componentes base de §4 (Boton, Campo, Selector, Aviso, Distintivo, EnlaceNav)
+resources/js/lib/money.ts    contraparte de solo lectura de Money.php, para pintar centavos en React
 resources/css/app.css        fuentes autoalojadas (@font-face) + directivas Tailwind
 public/fonts/                woff2 copiados de los paquetes @fontsource* (ver "Fuentes")
 tailwind.config.js           sistema de diseño de §4 — la paleta se REEMPLAZA, no se extiende
@@ -94,4 +97,10 @@ mysql -u root -p -e "CREATE DATABASE pos_papeleria_test CHARACTER SET utf8mb4 CO
 
 ## Entrar por primera vez
 
-Con la semilla de `php artisan db:seed`: usuario `admin`, contraseña `password`, PIN `1234`.
+Con la semilla de `php artisan db:seed` (contraseña `password` para los tres):
+
+| Usuario  | PIN  | Rol    | Sucursal   |
+| -------- | ---- | ------ | ---------- |
+| `admin`  | 1234 | admin  | Principal  |
+| `cajera` | 5678 | cajera | Principal  |
+| `maria`  | 9012 | cajera | Sucursal 2 |

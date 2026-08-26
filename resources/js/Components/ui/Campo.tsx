@@ -1,4 +1,4 @@
-import { InputHTMLAttributes, forwardRef } from 'react';
+import { InputHTMLAttributes, forwardRef, useId } from 'react';
 
 type CampoProps = InputHTMLAttributes<HTMLInputElement> & {
     etiqueta: string;
@@ -9,7 +9,8 @@ const Campo = forwardRef<HTMLInputElement, CampoProps>(function Campo(
     { etiqueta, error, id, className = '', ...props },
     ref,
 ) {
-    const inputId = id ?? props.name;
+    const idGenerado = useId();
+    const inputId = id ?? props.name ?? idGenerado;
 
     return (
         <div className="flex flex-col gap-1.5">

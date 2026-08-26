@@ -11,7 +11,7 @@ actualiza al cerrar cada fase. La especificación manda: ver [`prompt.md`](promp
 | --------------------------------- | ---------------------------------------------------------------- |
 | **0 — Andamiaje**                 | ✅ **Cerrada.** Los 3 criterios de aceptación verificados a mano |
 | **1 — Autenticación**             | ✅ **Cerrada.** Los 5 criterios verificados con Playwright       |
-| 2 — Catálogo y administración     | ⬜ Pendiente                                                     |
+| **2 — Catálogo y administración** | ✅ **Cerrada.** Los 4 criterios verificados con Playwright       |
 | 3 — Turnos de caja                | ⬜ Pendiente                                                     |
 | 4 — Punto de venta                | ⬜ Pendiente                                                     |
 | 5 — Historial, reportes y tablero | ⬜ Pendiente                                                     |
@@ -139,3 +139,68 @@ Commit siguiente a `97d08e7` · rama `main`.
 
 - No hay CI que corra `php artisan test` / `npm run test:e2e` en cada push — mismo pendiente
   que se anotó en la Fase 0.
+
+---
+
+## Fase 2 — detalle
+
+Commit siguiente a `7e44639` · rama `main`.
+
+### Hecho
+
+- `app/Support/Money.php` (§2): `toCents`/`toPesos`/`format`, todo con enteros — nunca pasa
+  por un float, ni siquiera en el parseo. Su contraparte de solo-lectura en el cliente,
+  `resources/js/lib/money.ts` (`formatearPesos`/`centavosAPesos`), porque React necesita pintar
+  los centavos que llegan por props de Inertia sin ida y vuelta al servidor; el formulario en
+  cambio manda el texto tal cual y es `Money::toCents()` quien lo convierte al guardar — la
+  "dos fronteras" del prompt se respeta así de los dos lados.
+- Migraciones y modelos de `product_categories`, `products` (dinero en `_cents` `BIGINT`,
+  `category_id` con `nullOnDelete`) e `inventories` (`UNIQUE(product_id, branch_id)`).
+- `InventoryService::provisionForAllBranches()` — se llama al crear un producto con
+  `manages_inventory`, y también si una edición lo activa después de haber estado apagado.
+  `adjustStock()` fija el valor nuevo (no es un delta).
+- CRUD completo de Sucursales, Usuarios, Categorías y Productos + pantalla de Inventario, todo
+  bajo el middleware `role:admin` (rutas en español: `/sucursales`, `/usuarios`, `/categorias`,
+  `/productos`, `/inventario`, tal como las nombra el criterio de aceptación #2). Nada se borra
+  nunca — todo es `is_active` o, en usuarios, restablecer contraseña/PIN por separado
+  (`PUT /usuarios/{id}/contrasena` y `/pin`).
+- Maquetado primero en `/design` (layout con navegación lateral + el patrón tabla/panel lateral
+  en Productos + Inventario con filtros) antes de escribir el React.
+- Componentes de §4 que faltaban: `Selector`, `Aviso`, `Distintivo`, `EnlaceNav`.
+  `AuthenticatedLayout` ahora tiene la navegación lateral real (solo para `admin`; una cajera
+  no la ve) y el indicador de sucursal activa + usuario en la barra superior.
+- Semilla completa de §9: dos sucursales, tres usuarios (`admin`/`cajera`/`maria` con sus PINes
+  y contraseña `password`), las 7 categorías, y 44 productos con margen 30-60% —
+  `InventoryService` los provisiona en ambas sucursales al sembrarlos.
+- Pruebas: 8 Pest (`tests/Feature/Admin/AdminManagementTest.php`) cubriendo los 4 criterios de
+  aceptación, más una corrida manual con Playwright sobre los mismos 4 criterios con
+  interacción real de navegador (capturas incluidas, no solo aserciones).
+
+### Decisiones / gotchas que no eran obvias
+
+- **Bug real que atrapó la verificación con Playwright, no los tests de Pest**: los `Campo`/
+  `Selector` de las cuatro pantallas admin no llevaban `name` ni `id`, así que
+  `htmlFor`/`id` quedaban ambos `undefined` — la etiqueta nunca quedaba asociada al campo
+  (rompe accesibilidad: un lector de pantalla no la anuncia, y clicar la etiqueta no enfoca el
+  input). Pest no lo detectó porque las pruebas de Pest pegan directo a las rutas HTTP, sin
+  pasar por el DOM. Se corrigió en dos capas: `useId()` de React como respaldo dentro de
+  `Campo`/`Selector` (garantiza que SIEMPRE haya una asociación válida aunque el llamador no
+  pase nada), y además se agregó `name` explícito en cada campo de las cuatro pantallas. Queda
+  como recordatorio para las fases que faltan: una pantalla que "se ve bien" en una captura
+  puede seguir rota para teclado/lector de pantalla — conviene interactuar con Playwright
+  (`getByLabel`, `getByRole`), no solo mirar el pixel.
+- El seed completo de §9 se movió a la Fase 2 (no se dejó para "cuando haga falta"): las
+  tablas de categorías/productos/inventario ya existen aquí, y sin datos de verdad no se puede
+  probar a mano ni el filtrado del inventario ni que ajustar una sucursal no toque la otra.
+- `InventoryController@index` filtra con `whereHas` sobre `product` y hace `join` con
+  `products` solo para poder `orderBy('products.name')` (Eloquent no deja ordenar por una
+  columna de una relación sin el join). `select('inventories.*')` evita que el join traiga
+  columnas de `products` duplicadas al hidratar el modelo.
+- Los checkboxes (`is_active`, `manages_inventory`) no tienen el problema clásico de HTML de
+  "una casilla sin marcar no se manda": Inertia serializa `useForm().data` como JSON con
+  `router.post`/`put`, no como un `<form>` nativo, así que un booleano `false` sí viaja al
+  servidor tal cual.
+
+### Pendiente para cerrar del todo (no bloquea empezar la Fase 3)
+
+- Mismo pendiente de siempre: no hay CI. Se sigue posponiendo a propósito.
