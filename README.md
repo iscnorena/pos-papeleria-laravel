@@ -8,7 +8,7 @@ contradice, gana el documento. La versión anterior del prompt (pensada para un 
 Next.js/Vercel, descartado) se conserva como referencia histórica en
 [`docs/prompt-nextjs-original.md`](docs/prompt-nextjs-original.md).
 
-**Estado: Fase 0 (andamiaje) terminada.** Siguiente: Fase 1, autenticación.
+**Estado: Fase 1 (autenticación) terminada.** Siguiente: Fase 2, catálogo y administración.
 
 ## Arranque
 
@@ -35,6 +35,8 @@ npm run build   # o: npm run dev, en dos terminales junto con `php artisan serve
 | `composer pint` / `pint:test`     | Laravel Pint (formato PHP)                                |
 | `php artisan migrate`             | Corre las migraciones                                     |
 | `php artisan db:seed`             | Siembra sucursales, usuarios, categorías y productos (§9) |
+| `php artisan test`                | Pest/PHPUnit                                              |
+| `npm run test:e2e`                | Playwright — necesita el server y Vite corriendo          |
 
 ## Cómo está armado
 
@@ -81,3 +83,15 @@ Next.js).
 
 MySQL/MariaDB local. `DATABASE_URL` no aplica aquí (eso era de la versión Postgres/Supabase);
 usa `DB_HOST`/`DB_PORT`/`DB_DATABASE`/`DB_USERNAME`/`DB_PASSWORD` en `.env`.
+
+Las pruebas (`php artisan test`) corren contra una base aparte, `pos_papeleria_test`
+(configurada en `phpunit.xml`) — este PHP no trae `pdo_sqlite`, así que no se puede usar el
+`:memory:` por defecto de Laravel. Créala una vez por máquina:
+
+```bash
+mysql -u root -p -e "CREATE DATABASE pos_papeleria_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+```
+
+## Entrar por primera vez
+
+Con la semilla de `php artisan db:seed`: usuario `admin`, contraseña `password`, PIN `1234`.

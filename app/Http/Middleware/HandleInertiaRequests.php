@@ -34,6 +34,9 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'pos' => [
+                'nombreNegocio' => config('pos.nombre_negocio'),
+            ],
         ];
     }
 }
