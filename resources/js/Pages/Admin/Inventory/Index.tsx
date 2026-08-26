@@ -11,7 +11,7 @@ interface Category {
 
 interface InventoryRow {
     id: number;
-    stock: string;
+    stock: number;
     product: { id: number; name: string; code: string | null };
     branch: { id: number; name: string };
 }
@@ -39,7 +39,7 @@ export default function Index({
     };
 
     const abrirAjuste = (inventory: InventoryRow) => {
-        form.setData('stock', inventory.stock);
+        form.setData('stock', String(inventory.stock));
         form.clearErrors();
         setEditandoId(inventory.id);
     };
@@ -115,7 +115,7 @@ export default function Index({
                     </thead>
                     <tbody>
                         {inventories.map((inventory) => {
-                            const sinExistencia = Number(inventory.stock) <= 0;
+                            const sinExistencia = inventory.stock <= 0;
 
                             return (
                                 <tr
@@ -141,7 +141,7 @@ export default function Index({
                                             >
                                                 <input
                                                     autoFocus
-                                                    inputMode="decimal"
+                                                    inputMode="numeric"
                                                     value={form.data.stock}
                                                     onChange={(e) =>
                                                         form.setData('stock', e.target.value)

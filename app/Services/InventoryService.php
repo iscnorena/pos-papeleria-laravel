@@ -31,7 +31,7 @@ class InventoryService
     /**
      * Ajuste manual de existencias (§8, Fase 2) — fija el nuevo valor, no es un delta.
      */
-    public function adjustStock(Inventory $inventory, string $nuevoStock): void
+    public function adjustStock(Inventory $inventory, int $nuevoStock): void
     {
         $inventory->update(['stock' => $nuevoStock]);
     }

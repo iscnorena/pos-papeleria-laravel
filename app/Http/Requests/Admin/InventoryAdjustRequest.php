@@ -18,7 +18,7 @@ class InventoryAdjustRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'stock' => ['required', 'numeric', 'min:0'],
+            'stock' => ['required', 'integer', 'min:0'],
         ];
     }
 }

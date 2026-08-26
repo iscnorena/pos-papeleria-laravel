@@ -51,7 +51,7 @@ class InventoryController extends Controller
 
     public function update(InventoryAdjustRequest $request, Inventory $inventory): RedirectResponse
     {
-        $this->inventoryService->adjustStock($inventory, $request->validated('stock'));
+        $this->inventoryService->adjustStock($inventory, (int) $request->validated('stock'));
 
         return back()->with('success', 'Existencia actualizada.');
     }

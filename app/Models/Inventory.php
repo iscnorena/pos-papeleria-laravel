@@ -15,7 +15,7 @@ class Inventory extends Model
     protected function casts(): array
     {
         return [
-            'stock' => 'decimal:3',
+            'stock' => 'integer',
         ];
     }
 

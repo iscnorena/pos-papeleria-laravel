@@ -88,8 +88,10 @@ en coma flotante y esa diferencia termina en un corte de caja descuadrado. Escri
 `toCents(string $texto): int` y `format(int $centavos): string` (con símbolo y separador de
 miles), y úsalo en todos lados. La conversión ocurre exactamente en dos fronteras: al leer/
 escribir en la base (que ya es un entero, no hay conversión real) y al pintar/parsear en la
-interfaz. Cantidades (`quantity`, `stock`) sí son `decimal(12,3)`, porque pueden ser
-fraccionarias (metros, kilos).
+interfaz. `sale_items.quantity` sí es `decimal(12,3)`, porque a futuro podría haber un
+producto que se venda por metros o kilos. `inventories.stock` en cambio es **entero**: este
+negocio solo maneja piezas completas (cuadernos, lápices...), nunca fracciones de existencia,
+así que forzarlo a entero evita mostrar "0.000" donde debería decir "0".
 
 **Fechas.** MySQL no tiene `timestamptz`: guarda `datetime` siempre en **UTC**, sin excepción,
 y conviértelo explícitamente al leer con Carbon
@@ -308,7 +310,7 @@ products             id, name(index), code?(index), category_id→product_catego
                      cost_price_cents bigint, sale_price_cents bigint,
                      manages_inventory bool default true, expiry_date?, is_active, timestamps
 inventories          id, product_id→products(cascade), branch_id→branches(cascade),
-                     stock decimal(12,3) default 0, physical_location?, timestamps
+                     stock unsigned int default 0, physical_location?, timestamps
                      UNIQUE(product_id, branch_id)
 cash_register_shifts id, user_id→users, branch_id→branches,
                      opening_amount_cents bigint, expected_cash_cents? bigint, actual_cash_cents? bigint,

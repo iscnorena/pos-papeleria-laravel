@@ -178,8 +178,8 @@ class AdminManagementTest extends TestCase
 
         $this->actingAs($admin)->put("/inventario/{$inventoryBranch1->id}", ['stock' => '50']);
 
-        $this->assertSame('50.000', $inventoryBranch1->fresh()->stock);
-        $this->assertSame('0.000', $inventoryBranch2->fresh()->stock);
+        $this->assertSame(50, $inventoryBranch1->fresh()->stock);
+        $this->assertSame(0, $inventoryBranch2->fresh()->stock);
     }
 
     public function test_cajera_gets_403_on_every_admin_route_even_by_typing_the_url(): void
