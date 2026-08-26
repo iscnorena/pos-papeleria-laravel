@@ -36,6 +36,9 @@ class HandleInertiaRequests extends Middleware
             ],
             'pos' => [
                 'nombreNegocio' => config('pos.nombre_negocio'),
+                'simboloMoneda' => config('pos.simbolo_moneda'),
+                'metodosPago' => config('pos.metodos_pago'),
+                'tasaImpuestoBps' => (int) config('pos.tasa_impuesto'),
             ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),

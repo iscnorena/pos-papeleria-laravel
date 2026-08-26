@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Enums\Role;
 use App\Models\Branch;
+use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\User;
@@ -126,6 +127,10 @@ class DatabaseSeeder extends Seeder
             );
 
             $inventoryService->provisionForAllBranches($producto);
+
+            // Solo la semilla pone existencia real: el alta desde el admin (Fase 2) sigue
+            // arrancando en 0, tal como pide su propio criterio de aceptación.
+            Inventory::where('product_id', $producto->id)->update(['stock' => 50]);
         }
     }
 }

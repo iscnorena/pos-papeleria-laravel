@@ -37,12 +37,14 @@ class ShiftTest extends TestCase
         $this->actingAs($cajera)->get('/caja')->assertRedirect(route('turnos.abrir'));
     }
 
-    public function test_caja_redirects_to_the_open_shifts_detail_when_one_exists(): void
+    public function test_caja_shows_the_point_of_sale_screen_when_a_shift_is_open(): void
     {
         $cajera = User::factory()->create();
-        $shift = CashRegisterShift::factory()->for($cajera)->for($cajera->branch)->create();
+        CashRegisterShift::factory()->for($cajera)->for($cajera->branch)->create();
 
-        $this->actingAs($cajera)->get('/caja')->assertRedirect(route('turnos.show', $shift));
+        // Desde la Fase 4, /caja con turno abierto YA NO redirige a turnos.show — es el
+        // punto de venta real (PosController@index).
+        $this->actingAs($cajera)->get('/caja')->assertOk();
     }
 
     public function test_closing_with_the_exact_expected_cash_shows_zero_difference(): void

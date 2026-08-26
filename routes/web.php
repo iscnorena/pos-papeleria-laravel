@@ -5,8 +5,9 @@ use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\ProductCategoryController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\PosController;
 use App\Http\Controllers\ShiftController;
-use App\Services\ShiftService;
+use App\Http\Controllers\TicketController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -18,16 +19,17 @@ Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware('auth')->name('dashboard');
 
-Route::middleware('auth')->group(function () {
-    // §7.5 / §8 Fase 3: sin turno abierto redirige a la apertura; con uno abierto, a su
-    // detalle — que la Fase 4 reemplazará por el punto de venta real.
-    Route::get('/caja', function (ShiftService $shifts) {
-        $shift = $shifts->getOpenShift(request()->user());
+// §6: el ticket es público (sin sesión) para poder compartirse por WhatsApp — resuelto por
+// el token opaco, nunca por el id incremental.
+Route::get('/ticket/{token}', [TicketController::class, 'show'])->name('ticket.show');
+Route::get('/ticket/{token}/pdf', [TicketController::class, 'pdf'])->name('ticket.pdf');
 
-        return $shift
-            ? redirect()->route('turnos.show', $shift)
-            : redirect()->route('turnos.abrir');
-    })->name('caja');
+Route::middleware('auth')->group(function () {
+    // §8 Fase 4: sin turno abierto redirige a la apertura; con uno abierto, esta es la
+    // pantalla del punto de venta.
+    Route::get('/caja', [PosController::class, 'index'])->name('caja');
+    Route::post('/caja', [PosController::class, 'store'])->name('pos.store');
+    Route::get('/caja/venta/{sale}', [PosController::class, 'success'])->name('pos.success');
 
     Route::get('/turnos', [ShiftController::class, 'index'])->name('turnos.index');
     Route::get('/turnos/abrir', [ShiftController::class, 'create'])->name('turnos.abrir');

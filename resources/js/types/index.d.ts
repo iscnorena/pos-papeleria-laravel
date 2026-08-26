@@ -1,4 +1,5 @@
 export type Rol = 'admin' | 'cajera';
+export type MetodoPago = 'cash' | 'card' | 'transfer';
 
 export interface Branch {
     id: number;
@@ -25,6 +26,9 @@ export type PageProps<T extends Record<string, unknown> = Record<string, unknown
     };
     pos: {
         nombreNegocio: string;
+        simboloMoneda: string;
+        metodosPago: Record<MetodoPago, string>;
+        tasaImpuestoBps: number;
     };
     flash: {
         success: string | null;

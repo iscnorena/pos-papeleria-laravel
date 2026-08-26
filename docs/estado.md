@@ -13,7 +13,7 @@ actualiza al cerrar cada fase. La especificación manda: ver [`prompt.md`](promp
 | **1 — Autenticación**             | ✅ **Cerrada.** Los 5 criterios verificados con Playwright       |
 | **2 — Catálogo y administración** | ✅ **Cerrada.** Los 4 criterios verificados con Playwright       |
 | **3 — Turnos de caja**            | ✅ **Cerrada.** Los 4 criterios verificados con Playwright       |
-| 4 — Punto de venta                | ⬜ Pendiente                                                     |
+| **4 — Punto de venta**            | ✅ **Cerrada.** Los 7 criterios verificados con Playwright       |
 | 5 — Historial, reportes y tablero | ⬜ Pendiente                                                     |
 | 6 — Andamio de Herramientas       | ⬜ Pendiente                                                     |
 | 7 — AcomodaImpresion              | ⬜ Pendiente                                                     |
@@ -282,3 +282,75 @@ Commit siguiente a `600e5ff` · rama `main`.
 - `sale_items.product_id` sigue `NOT NULL` (como debe ser en esta fase); la migración para
   permitirlo nulo cuando se conecte el cobro de Herramientas (Fase 6) sigue pendiente y
   **anotada, no hecha**, tal como pide el prompt.
+
+---
+
+## Fase 4 — detalle
+
+Commit siguiente a `83a0d78` · rama `main`.
+
+### Hecho
+
+- `app/Exceptions/InsufficientStockException` e `InsufficientPaymentException`, sobre el
+  `BusinessException` que ya existía desde la Fase 3 — mismo patrón, mismo `render()`.
+- `FolioService::next()` — exactamente la consulta atómica de §7.3, traducida a MySQL
+  (`INSERT ... ON DUPLICATE KEY UPDATE` + `lockForUpdate()`), sin tabla `folios` con `id` ni
+  timestamps (coincide con el prompt: se maneja con `DB::table`, nunca un modelo Eloquent).
+- `SaleService::createSale()` — la pieza central de la fase. Una sola transacción: calcula
+  cada renglón desde el `Product` en la base (nunca desde lo que mande el cliente), folio,
+  inserta venta + renglones, descuenta inventario de forma atómica
+  (`UPDATE ... WHERE stock >= ?`, `InsufficientStockException` si `affected === 0`), y recorta
+  cada pago al saldo restante para que el cambio nunca se registre como ingreso.
+- `PosController`: `/caja` ahora **es** el punto de venta (ya no redirige a `turnos.show` como
+  en la Fase 3 — ese placeholder se reemplazó, tal como estaba anotado). El catálogo completo
+  de la sucursal viaja en las props iniciales; el filtrado por nombre/código y categoría es
+  100% cliente. `TicketController` sirve `/ticket/{token}` (público, sin `auth`) y su PDF vía
+  `barryvdh/laravel-dompdf`.
+- Pantalla de punto de venta: catálogo + carrito (`useReducer` propio en `Pos/carrito.ts`),
+  atajos de teclado completos (F2/Enter/+/−/Supr/F12/Esc), descuento por renglón editable
+  inline, modal de cobro con pagos mixtos y cambio en vivo (`Pos/CobroModal.tsx`), pantalla de
+  éxito con folio y cambio. Maquetado primero en `/design` (catálogo+carrito, modal de cobro,
+  éxito).
+- Ticket público con CSS de impresión (`@page { size: 80mm auto }`) y botón "Descargar PDF";
+  el cambio no se guarda en la venta (§7.2), así que solo viaja al ticket por query string
+  cuando se llega ahí desde la pantalla de éxito — un ticket abierto después (WhatsApp) no
+  lo trae, lo cual es correcto.
+- Pruebas: 6 Pest (`tests/Feature/PosTest.php`) cubriendo 6 de los 7 criterios de aceptación
+  a nivel HTTP, más **7 pruebas Playwright** con interacción real de navegador cubriendo los
+  7 criterios, incluida la más delicada: armar y cobrar una venta completa **sin tocar el
+  mouse** (F2, tipeo, Enter, +, F12, tipeo, Enter, Tab/foco, Enter).
+
+### Decisiones / gotchas que no eran obvias
+
+- **Bug real que solo la verificación con teclado (no Pest, no un clic de mouse) atrapó**:
+  tras agregar un producto con Enter en el buscador, el foco se quedaba en el campo de texto.
+  Como el atajo de +/- está deliberadamente desactivado mientras el foco está en un input (para
+  no interferir con la escritura normal), presionar `+` justo después de agregar un producto
+  no hacía nada — rompía exactamente el flujo "sin mouse" que pide el criterio de aceptación
+  #6. Se corrigió soltando el foco del buscador (`buscadorRef.current?.blur()`) inmediatamente
+  después de agregar por Enter. Ni una prueba Pest ni mirar una captura de pantalla lo hubieran
+  encontrado — solo tecleando de verdad.
+- **Bug en el propio script de verificación, no en la app**: el helper que llamaba
+  `php artisan tinker --execute="..."` desde Node no escapaba `$` antes de meter el PHP en un
+  string de shell con comillas dobles — bash expandía `$u`, `$p`, etc. como variables vacías
+  antes de que PHP los viera, así que cada preparación de datos fallaba en seco. Se corrigió
+  escapando también `\` y `$`, no solo `"`.
+- **Las cantidades de venta son enteras** (aunque `sale_items.quantity` siga `decimal(12,3)`
+  en la base, por si algún día hace falta — ver el fix de "existencia como entero" de más
+  arriba): esta papelería vende piezas completas, así que `StoreSaleRequest` valida
+  `items.*.quantity` como `integer`, no como el `numeric` que tolera fracciones.
+- **El botón "Confirmar cobro" se deshabilita en el cliente si el pago no alcanza**, en vez de
+  dejar que el usuario lo intente y reciba el error del servidor. Esto cumple el espíritu del
+  criterio de aceptación #3 (no se puede cobrar con pago insuficiente) de una forma más
+  amable que "mostrar el error después de intentarlo" — el servidor igual lo rechaza si algo
+  lo evade (confirmado con Pest, que sí prueba el POST directo). El indicador "Falta: $X" en
+  el propio modal es el equivalente visible de ese error mientras no alcanza.
+- Tras editar páginas nuevas (`Pos/*`, `Ticket/Show.tsx`), correr las pruebas sin `npm run
+build` primero revienta con `ViteException: Unable to locate file in Vite manifest` — no es
+  un bug, es que el manifest de producción quedó desactualizado. Ya había pasado en fases
+  anteriores; se deja aquí de nuevo como recordatorio porque volvió a costar una vuelta de
+  depuración.
+
+### Pendiente para cerrar del todo (no bloquea empezar la Fase 5)
+
+- Mismo pendiente de siempre: no hay CI.
