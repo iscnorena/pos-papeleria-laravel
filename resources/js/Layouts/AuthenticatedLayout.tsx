@@ -4,8 +4,12 @@ import { PageProps } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode } from 'react';
 
-const ENLACES_ADMIN = [
+const ENLACES_COMUNES = [
     { ruta: 'dashboard', etiqueta: 'Tablero' },
+    { ruta: 'turnos.index', etiqueta: 'Turnos' },
+];
+
+const ENLACES_ADMIN = [
     { ruta: 'sucursales.index', etiqueta: 'Sucursales' },
     { ruta: 'usuarios.index', etiqueta: 'Usuarios' },
     { ruta: 'categorias.index', etiqueta: 'Categorías' },
@@ -22,13 +26,13 @@ export default function AuthenticatedLayout({
 
     return (
         <div className="flex min-h-screen bg-papel">
-            {esAdmin && (
+            {auth.user && (
                 <aside className="w-56 shrink-0 border-r border-linea bg-white py-5">
                     <div className="mb-5 px-5 font-display text-cuerpo font-bold text-tinta">
                         {pos.nombreNegocio}
                     </div>
                     <nav className="flex flex-col gap-0.5">
-                        {ENLACES_ADMIN.map((enlace) => (
+                        {[...ENLACES_COMUNES, ...(esAdmin ? ENLACES_ADMIN : [])].map((enlace) => (
                             <EnlaceNav
                                 key={enlace.ruta}
                                 href={route(enlace.ruta)}

@@ -12,7 +12,7 @@ actualiza al cerrar cada fase. La especificación manda: ver [`prompt.md`](promp
 | **0 — Andamiaje**                 | ✅ **Cerrada.** Los 3 criterios de aceptación verificados a mano |
 | **1 — Autenticación**             | ✅ **Cerrada.** Los 5 criterios verificados con Playwright       |
 | **2 — Catálogo y administración** | ✅ **Cerrada.** Los 4 criterios verificados con Playwright       |
-| 3 — Turnos de caja                | ⬜ Pendiente                                                     |
+| **3 — Turnos de caja**            | ✅ **Cerrada.** Los 4 criterios verificados con Playwright       |
 | 4 — Punto de venta                | ⬜ Pendiente                                                     |
 | 5 — Historial, reportes y tablero | ⬜ Pendiente                                                     |
 | 6 — Andamio de Herramientas       | ⬜ Pendiente                                                     |
@@ -204,3 +204,81 @@ Commit siguiente a `7e44639` · rama `main`.
 ### Pendiente para cerrar del todo (no bloquea empezar la Fase 3)
 
 - Mismo pendiente de siempre: no hay CI. Se sigue posponiendo a propósito.
+
+---
+
+## Fase 3 — detalle
+
+Commit siguiente a `600e5ff` · rama `main`.
+
+### Hecho
+
+- Migraciones y modelos de `cash_register_shifts` y `shift_payments` (§7). **Además**, el
+  esquema (solo esquema) de `sales`, `sale_items` y `sale_payments`: la fórmula de cierre de
+  turno (§7.5) necesita sumar los pagos en efectivo de las ventas completadas del turno, así
+  que esas tablas tenían que existir ya, aunque nada las llene todavía — eso es 100% trabajo de
+  la Fase 4 (`SaleService`, folios, el punto de venta). Ningún controller, ruta ni página de
+  ventas se construyó aquí; los modelos `Sale`/`SaleItem`/`SalePayment` solo tienen sus
+  relaciones, sin lógica de negocio.
+- `ShiftService`: `open()` (revienta con `ShiftAlreadyOpenException` si ya hay un turno
+  abierto del usuario), `expectedCash()` (fondo + Σ pagos en efectivo de ventas completadas —
+  hoy siempre da el fondo, porque no hay ventas), y `close()` (congela `shift_payments` por los
+  tres métodos dentro de una transacción, y guarda esperado/contado/diferencia).
+- Primera excepción de negocio real del proyecto: `App\Exceptions\BusinessException` (clase
+  base) y `ShiftAlreadyOpenException`, con un `render()` en `bootstrap/app.php` que las
+  convierte en `back()->with('error', ...)` — el patrón que pide §2 para "turno ya abierto, sin
+  existencia, pago insuficiente", listo para que la Fase 4 lo reutilice tal cual.
+- Rutas: `/caja` (redirige a abrir o al detalle del turno abierto, según haya o no uno — esta
+  ruta es la que la Fase 4 va a convertir en el punto de venta real) y `/turnos/*` (listado,
+  abrir, detalle, cerrar). Autorización a nivel de registro en el controller (no un middleware
+  de rol): una cajera solo ve/cierra su propio turno; el admin ve todos pero no puede cerrar el
+  de otra persona.
+- Cuatro pantallas, maquetadas primero en `/design`: listado (turno abierto destacado arriba),
+  apertura, cierre (con el cálculo de la diferencia en vivo, 100% cliente, coloreado
+  visto/sello/grafito según el signo) y detalle (resumen, desglose por método de pago, lista de
+  ventas — todo en cero por ahora, a la espera de la Fase 4).
+- Nuevo componente de §4: `Modal`, usado en la confirmación de cierre ("Esta acción es
+  irreversible").
+- `resources/js/lib/money.ts` gana `pesosACentavos()` — la única excepción a "el cliente nunca
+  parsea dinero": una vista previa en pantalla (la diferencia mientras se teclea), nunca lo que
+  se manda al guardar. Nuevo `resources/js/lib/fecha.ts` para pintar fechas en la zona horaria
+  del navegador (no la del servidor).
+- "Turnos" se agregó a la navegación lateral para **ambos roles** (§3: es de los pocos ítems
+  que ve una cajera) — obligó a separar `ENLACES_COMUNES` de `ENLACES_ADMIN` en
+  `AuthenticatedLayout`, que hasta la Fase 2 solo mostraba el sidebar a `admin`.
+- Pruebas: 8 Pest (`tests/Feature/ShiftTest.php`) cubriendo los 4 criterios de aceptación más
+  autorización a nivel de registro, y una corrida manual con Playwright sobre los mismos 4
+  criterios con interacción real (clic, formularios, tres sesiones de navegador distintas para
+  probar que una cajera no ve el turno de otra).
+
+### Decisiones / gotchas que no eran obvias
+
+- **Bug en la propia prueba de Playwright, no en la app**: la prueba de "una cajera no ve el
+  turno de otra" leía `page.url()` justo después de un `click()` que dispara una navegación de
+  Inertia — como esa navegación es asíncrona, `url()` a veces capturaba la URL **anterior**
+  (`/turnos/abrir`) en vez de la nueva (`/turnos/{id}`), así que la prueba visitaba una URL que
+  no era la que creía y "confirmaba" un 200 donde debía haber 403. Se corrigió con
+  `page.waitForURL(/\/turnos\/\d+$/)` antes de leer `url()`. Es el mismo tipo de trampa que
+  [[feedback-verify-with-playwright-not-just-pest]] advierte pero al revés: aquí Pest tenía
+  razón (sus 8 pruebas ya cubrían esto correctamente) y el script de Playwright era el que
+  mentía — un recordatorio de que la verificación manual también puede tener bugs propios, no
+  solo la app.
+- `MySQL` no permite `TRUNCATE` sobre una tabla referenciada por una FK (aunque esa tabla
+  hija esté vacía). El script de verificación usaba `TRUNCATE cash_register_shifts` para
+  resetear entre pruebas y fallaba por la FK de `sales.shift_id` — se cambió a `DELETE FROM`.
+- El cálculo de "efectivo esperado" vive en un solo método (`ShiftService::expectedCash()`)
+  reutilizado tanto por la pantalla de cierre (antes de guardar, como vista previa) como por
+  `close()` (al guardar) — evita el mismo tipo de desincronización que el prompt advierte para
+  el motor de retícula de la Fase 7, aunque aquí el riesgo es menor.
+- La autorización de turnos **no** usa el middleware `role:admin` de las fases anteriores:
+  aquí ambos roles acceden a las mismas rutas, pero cada quien ve datos distintos según sea
+  dueño del turno o no. Por eso vive como chequeos explícitos dentro del controller
+  (`autorizarAcceso`/`autorizarCierre`), no como un middleware — es autorización a nivel de
+  registro, no de ruta.
+
+### Pendiente para cerrar del todo (no bloquea empezar la Fase 4)
+
+- Mismo pendiente de siempre: no hay CI.
+- `sale_items.product_id` sigue `NOT NULL` (como debe ser en esta fase); la migración para
+  permitirlo nulo cuando se conecte el cobro de Herramientas (Fase 6) sigue pendiente y
+  **anotada, no hecha**, tal como pide el prompt.

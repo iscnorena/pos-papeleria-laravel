@@ -5,6 +5,8 @@ use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\ProductCategoryController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\ShiftController;
+use App\Services\ShiftService;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -15,6 +17,25 @@ Route::get('/', function () {
 Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware('auth')->name('dashboard');
+
+Route::middleware('auth')->group(function () {
+    // §7.5 / §8 Fase 3: sin turno abierto redirige a la apertura; con uno abierto, a su
+    // detalle — que la Fase 4 reemplazará por el punto de venta real.
+    Route::get('/caja', function (ShiftService $shifts) {
+        $shift = $shifts->getOpenShift(request()->user());
+
+        return $shift
+            ? redirect()->route('turnos.show', $shift)
+            : redirect()->route('turnos.abrir');
+    })->name('caja');
+
+    Route::get('/turnos', [ShiftController::class, 'index'])->name('turnos.index');
+    Route::get('/turnos/abrir', [ShiftController::class, 'create'])->name('turnos.abrir');
+    Route::post('/turnos/abrir', [ShiftController::class, 'store'])->name('turnos.abrir.store');
+    Route::get('/turnos/{shift}', [ShiftController::class, 'show'])->name('turnos.show');
+    Route::get('/turnos/{shift}/cerrar', [ShiftController::class, 'edit'])->name('turnos.cerrar');
+    Route::put('/turnos/{shift}/cerrar', [ShiftController::class, 'update'])->name('turnos.cerrar.store');
+});
 
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/sucursales', [BranchController::class, 'index'])->name('sucursales.index');

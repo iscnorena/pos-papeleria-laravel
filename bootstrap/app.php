@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\BusinessException;
 use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
@@ -28,4 +29,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        $exceptions->render(fn (BusinessException $e) => back()->with('error', $e->getMessage()));
     })->create();
